@@ -3,6 +3,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-line: var(--line);
@@ -16,17 +17,20 @@
   --color-pcmb-yellow: var(--yellow);
   --color-pcmb-cyan: var(--cyan);
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --font-pixel: var(--font-silkscreen), monospace;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 :root {
-  --background: #07080c;
-  --surface: #0d0f16;
-  --foreground: #e7e9f0;
-  --muted: #8a92a6;
-  --line: rgba(255, 255, 255, 0.08);
+  --background: #06070b;
+  --surface: #0c0e15;
+  --surface-2: #11141d;
+  --foreground: #eceef4;
+  --muted: #8d95a8;
+  --line: rgba(255, 255, 255, 0.075);
 
   /* In-game palette */
   --gray: #708090;
@@ -37,29 +41,44 @@
   --orange: #ff8c00;
   --yellow: #ffee00;
   --cyan: #2ef2ff;
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 html {
   scroll-behavior: smooth;
   color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
   background: rgba(55, 131, 255, 0.35);
 }
 
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
+
 @layer utilities {
-  /* Faint techy grid that fades out toward the edges */
+  /* Faint grid that fades out toward the edges */
   .bg-grid {
     background-image: linear-gradient(var(--line) 1px, transparent 1px),
       linear-gradient(90deg, var(--line) 1px, transparent 1px);
     background-size: 48px 48px;
     mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 100%);
+  }
+
+  .bg-grid-sm {
+    background-image: linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 20px 20px;
   }
 
   .text-gradient {
@@ -69,40 +88,314 @@ body {
     color: transparent;
   }
 
+  .text-fade {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
   .pixelated {
     image-rendering: pixelated;
   }
+
+  /* Hairline gradient border that works on any rounded element */
+  .border-glow {
+    position: relative;
+  }
+  .border-glow::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(140deg, rgba(55, 131, 255, 0.55), rgba(255, 255, 255, 0.06) 40%, rgba(72, 21, 170, 0.55));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    pointer-events: none;
+  }
 }
 
-/* Floating "platforms" borrowed from the game */
-@keyframes float {
-  0%, 100% { transform: translateY(0) skewY(-6deg); }
-  50% { transform: translateY(-14px) skewY(-6deg); }
+/* ───────────────────────── Motion system ─────────────────────────
+   Everything animates transform/opacity only so it stays on the
+   compositor. Scroll reveals are gated on `.js` (set before paint)
+   so content is never hidden when scripts don't run. */
+
+.js [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+  transition:
+    opacity 0.9s var(--ease),
+    transform 0.9s var(--ease);
+  transition-delay: calc(var(--i, 0) * 90ms);
+}
+.js [data-reveal][data-in] {
+  opacity: 1;
+  transform: none;
 }
 
-.platform {
-  animation: float 6s ease-in-out infinite;
+/* Looping illustrations only run while on screen */
+.js [data-play]:not([data-in]),
+.js [data-play]:not([data-in]) * {
+  animation-play-state: paused !important;
 }
 
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+/* Hero intro: CSS-only so it never waits on hydration */
+@keyframes rise {
+  from { opacity: 0; transform: translate3d(0, 0.6em, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translate3d(0, 16px, 0); }
+  to { opacity: 1; transform: none; }
+}
+.intro-word {
+  display: inline-block;
+  animation: rise 0.9s var(--ease) both;
+  animation-delay: calc(80ms + var(--i, 0) * 90ms);
+}
+.intro {
+  animation: fade-up 0.9s var(--ease) both;
+  animation-delay: calc(250ms + var(--i, 0) * 90ms);
 }
 
-.marquee {
-  animation: marquee 40s linear infinite;
+/* Cursor spotlight on cards (vars set by <Motion/>) */
+[data-spotlight] {
+  position: relative;
+  isolation: isolate;
+}
+[data-spotlight]::before,
+[data-spotlight]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+[data-spotlight]::before {
+  z-index: -1;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(55, 131, 255, 0.1), transparent 45%);
+}
+[data-spotlight]::after {
+  padding: 1px;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(156, 192, 255, 0.55), transparent 45%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+[data-spotlight]:hover::before,
+[data-spotlight]:hover::after {
+  opacity: 1;
 }
 
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+/* Hero phone tilt follows the pointer across the hero (vars set by <Motion/>) */
+.tilt {
+  transform: perspective(1200px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.6s var(--ease);
 }
 
-.pulse-dot {
-  animation: pulse-dot 2s ease-in-out infinite;
+/* Scroll progress bar — pure CSS where scroll timelines exist */
+.scroll-progress {
+  display: none;
+}
+@supports (animation-timeline: scroll()) {
+  .scroll-progress {
+    display: block;
+    transform-origin: 0 50%;
+    transform: scaleX(0);
+    animation: progress linear both;
+    animation-timeline: scroll(root);
+  }
+}
+@keyframes progress {
+  to { transform: scaleX(1); }
+}
+
+/* ───────────────────────── Game-inspired loops ───────────────────────── */
+
+/* Layered so Tailwind utilities (e.g. [animation-delay:…]) can override */
+@layer components {
+  /* Wall platforms scrolling down = the page "climbing" up */
+  .shaft {
+    --tile: 640px;
+    position: absolute;
+    top: 0;
+    height: calc(100% + var(--tile));
+    width: 100%;
+    background-repeat: repeat-y;
+    background-size: 100% var(--tile);
+    animation: climb 14s linear infinite;
+  }
+  @keyframes climb {
+    from { transform: translate3d(0, calc(var(--tile) * -1), 0); }
+    to { transform: translate3d(0, 0, 0); }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translate3d(0, 0, 0) skewY(-6deg); }
+    50% { transform: translate3d(0, -14px, 0) skewY(-6deg); }
+  }
+  .platform {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes marquee {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-50%, 0, 0); }
+  }
+  .marquee {
+    animation: marquee 45s linear infinite;
+  }
+  .marquee-wrap:hover .marquee {
+    animation-play-state: paused;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+  .pulse-dot {
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  /* Card 01: block hops wall to wall */
+  .hop-x {
+    animation: hop-x 0.8s linear infinite alternate;
+  }
+  .hop-y {
+    animation: hop-y 0.8s infinite;
+  }
+  .hop-r {
+    animation: hop-r 1.6s linear infinite;
+  }
+  @keyframes hop-x {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(calc(100cqw - 2.5rem - 14px), 0, 0); }
+  }
+  @keyframes hop-y {
+    0%, 100% { transform: translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.25, 0.7, 0.4, 1); }
+    50% { transform: translate3d(0, -64px, 0); animation-timing-function: cubic-bezier(0.6, 0, 0.75, 0.3); }
+  }
+  @keyframes hop-r {
+    to { transform: rotate(360deg); }
+  }
+  .tap-ring {
+    animation: tap-ring 0.8s var(--ease) infinite;
+  }
+  @keyframes tap-ring {
+    0% { opacity: 0.8; transform: scale(0.2); }
+    100% { opacity: 0; transform: scale(1.6); }
+  }
+
+  /* Card 02: endless floors */
+  .bob {
+    animation: bob 1.2s ease-in-out infinite;
+  }
+  @keyframes bob {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    50% { transform: translate3d(0, -10px, 0) rotate(45deg); }
+  }
+
+  /* Card 03: gems */
+  .gem {
+    animation: gem 3s ease-in-out infinite;
+  }
+  @keyframes gem {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(0, -8px, 0); }
+  }
+  .sparkle {
+    animation: sparkle 2.4s ease-in-out infinite;
+  }
+  @keyframes sparkle {
+    0%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+    50% { opacity: 1; transform: scale(1) rotate(45deg); }
+  }
+  .js .podium {
+    transform: scaleY(0.15);
+    transform-origin: bottom;
+    transition: transform 1.1s var(--ease);
+    transition-delay: calc(200ms + var(--i, 0) * 120ms);
+  }
+  .js [data-in] .podium {
+    transform: none;
+  }
+
+  /* Token coin */
+  .coin {
+    transform-style: preserve-3d;
+    animation: coin 8s linear infinite;
+  }
+  .coin-face {
+    backface-visibility: hidden;
+  }
+  .coin-back {
+    transform: rotateY(180deg);
+  }
+  @keyframes coin {
+    from { transform: rotateY(0deg); }
+    to { transform: rotateY(360deg); }
+  }
+  .coin-shadow {
+    animation: coin-shadow 4s ease-in-out infinite;
+  }
+  @keyframes coin-shadow {
+    0%, 100% { transform: scaleX(1); opacity: 0.7; }
+    50% { transform: scaleX(0.55); opacity: 0.4; }
+  }
+  .spin-slow {
+    animation: hop-r 40s linear infinite;
+  }
+  .spin-slow-rev {
+    animation: hop-r 60s linear infinite reverse;
+  }
+
+  /* CTA: block climbs the stairs */
+  .stair-hop {
+    animation: stair-hop 4.4s infinite;
+  }
+  @keyframes stair-hop {
+    0%   { transform: translate3d(18px, -6px, 0) rotate(0deg); opacity: 1; animation-timing-function: cubic-bezier(0.25, 0.7, 0.4, 1); }
+    7.5% { transform: translate3d(46px, -54px, 0) rotate(45deg); animation-timing-function: cubic-bezier(0.6, 0, 0.75, 0.3); }
+    15%  { transform: translate3d(74px, -26px, 0) rotate(90deg); }
+    20%  { transform: translate3d(74px, -26px, 0) rotate(90deg); animation-timing-function: cubic-bezier(0.25, 0.7, 0.4, 1); }
+    27.5% { transform: translate3d(102px, -74px, 0) rotate(135deg); animation-timing-function: cubic-bezier(0.6, 0, 0.75, 0.3); }
+    35%  { transform: translate3d(130px, -46px, 0) rotate(180deg); }
+    40%  { transform: translate3d(130px, -46px, 0) rotate(180deg); animation-timing-function: cubic-bezier(0.25, 0.7, 0.4, 1); }
+    47.5% { transform: translate3d(158px, -94px, 0) rotate(225deg); animation-timing-function: cubic-bezier(0.6, 0, 0.75, 0.3); }
+    55%  { transform: translate3d(186px, -66px, 0) rotate(270deg); }
+    60%  { transform: translate3d(186px, -66px, 0) rotate(270deg); animation-timing-function: cubic-bezier(0.25, 0.7, 0.4, 1); }
+    67.5% { transform: translate3d(214px, -114px, 0) rotate(315deg); animation-timing-function: cubic-bezier(0.6, 0, 0.75, 0.3); }
+    75%  { transform: translate3d(242px, -86px, 0) rotate(360deg); opacity: 1; }
+    88%  { transform: translate3d(242px, -86px, 0) rotate(360deg); opacity: 1; }
+    92%  { transform: translate3d(242px, -86px, 0) rotate(360deg); opacity: 0; }
+    93%  { transform: translate3d(18px, -6px, 0) rotate(0deg); opacity: 0; }
+    100% { transform: translate3d(18px, -6px, 0) rotate(0deg); opacity: 1; }
+  }
+}
+
+/* Mobile menu height animation without measuring */
+.menu-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s var(--ease);
+}
+.menu-collapse[data-open="true"] {
+  grid-template-rows: 1fr;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .platform, .marquee, .pulse-dot { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+  .js [data-reveal] { opacity: 1; transform: none; }
+  .tilt { transform: none; }
+  .scroll-progress { display: none; }
 }
