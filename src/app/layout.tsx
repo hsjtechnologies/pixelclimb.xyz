@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 const pixel = localFont({
@@ -9,9 +9,9 @@ const pixel = localFont({
   weight: "100 900",
 });
 
-const sans = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const sans = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono" });
+const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://pixelclimb.xyz"),
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#07080c",
+  themeColor: "#06070b",
 };
 
 export default function RootLayout({
@@ -52,7 +52,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Flag JS before first paint so scroll reveals never hide content without scripts */}
+        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
+      </head>
       <body
         className={`${pixel.variable} ${sans.variable} ${mono.variable} font-sans antialiased`}
       >
