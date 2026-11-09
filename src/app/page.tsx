@@ -132,7 +132,7 @@ function GhostButton({ href, children }: { href: string; children: React.ReactNo
   return (
     <a
       href={href}
-      {...(href.startsWith("mailto:") ? {} : external)}
+      {...(href.startsWith("mailto:") || href.startsWith("/") ? {} : external)}
       className="group inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-white/3 px-6 text-sm font-semibold text-foreground backdrop-blur transition-[transform,background-color,border-color] duration-300 ease-out-expo hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/6 active:translate-y-0 active:scale-[0.98]"
     >
       {children}
@@ -370,12 +370,15 @@ export default function Home() {
               </p>
 
               <div
-                className="intro mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center lg:justify-start"
+                className="intro mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:justify-center lg:justify-start"
                 style={vars({ "--i": 2 })}
               >
                 <PrimaryButton href={LINKS.play}>
                   <PlayIcon /> Play on Google Play
                 </PrimaryButton>
+                <GhostButton href="/play">
+                  Play in browser <Arrow />
+                </GhostButton>
                 <GhostButton href={LINKS.deck}>
                   Read the pitch deck <Arrow />
                 </GhostButton>
